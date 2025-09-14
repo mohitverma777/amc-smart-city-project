@@ -1,0 +1,27 @@
+{
+  "name": "amc-smart-city-project",
+  "version": "1.0.0",
+  "description": "AMC Smart City Backend Services",
+  "main": "index.js",
+  "workspaces": [
+    "packages/backend-services/*"
+  ],
+  "scripts": {
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
+    "dev": "docker-compose -f docker-compose.dev.yml up",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces"
+  },
+  "keywords": ["smart-city", "microservices", "amc", "nodejs"],
+  "author": "AMC Development Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^2.8.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0"
+  }
+}
