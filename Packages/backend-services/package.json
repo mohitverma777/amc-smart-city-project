@@ -1,27 +1,31 @@
 {
-  "name": "amc-smart-city-project",
+  "name": "amc-backend-services",
   "version": "1.0.0",
   "description": "AMC Smart City Backend Services",
-  "main": "index.js",
+  "private": true,
   "workspaces": [
-    "packages/backend-services/*"
+    "shared",
+    "api-gateway",
+    "user-management",
+    "grievance-service",
+    "property-tax-service",
+    "water-management",
+    "waste-management",
+    "payment-service",
+    "notification-service",
+    "chatbot-service",
+    "analytics-service"
   ],
   "scripts": {
-    "start": "docker-compose up -d",
-    "stop": "docker-compose down",
-    "dev": "docker-compose -f docker-compose.dev.yml up",
-    "build": "npm run build --workspaces",
+    "install:all": "npm install --workspaces",
+    "dev:gateway": "npm run dev --workspace=api-gateway",
+    "dev:users": "npm run dev --workspace=user-management",
+    "start:all": "concurrently \"npm run dev:gateway\" \"npm run dev:users\"",
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces"
   },
-  "keywords": ["smart-city", "microservices", "amc", "nodejs"],
-  "author": "AMC Development Team",
-  "license": "MIT",
   "devDependencies": {
-    "@types/node": "^18.0.0",
-    "eslint": "^8.0.0",
-    "prettier": "^2.8.0",
-    "husky": "^8.0.0",
-    "lint-staged": "^13.0.0"
+    "concurrently": "^7.6.0",
+    "lerna": "^6.6.2"
   }
 }
