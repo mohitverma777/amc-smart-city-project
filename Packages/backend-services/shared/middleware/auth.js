@@ -43,6 +43,18 @@ class AuthMiddleware {
   // Main authentication middleware
   authenticate = async (req, res, next) => {
     try {
+      // Public routes that don't need authentication
+      const publicPaths = [
+        '/auth/register',
+        '/auth/login',
+        '/health'
+      ];
+
+      // ✅ Allow public routes without token
+      if (publicPaths.includes(req.path)) {
+        return next();
+      }
+
       // Extract token
       const token = this.extractToken(req);
 

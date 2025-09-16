@@ -1,93 +1,100 @@
 const Joi = require('joi');
-const logger = require('./logger');
+// Use a simple console logger instead of requiring a file
+const logger = {
+  warn: (message, data) => {
+    console.warn(message, data);
+  }
+};
 
 class ValidationMiddleware {
-  // Common validation schemas
-  schemas = {
-    // MongoDB ObjectId
-    objectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid ObjectId'),
-    
-    // Email
-    email: Joi.string().email().lowercase().trim(),
-    
-    // Password
-    password: Joi.string().min(8).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-      .message('Password must contain at least 8 characters with uppercase, lowercase, number and special character'),
-    
-    // Mobile number (Indian format)
-    mobileNumber: Joi.string().pattern(/^[6-9]\d{9}$/).message('Invalid mobile number'),
-    
-    // Citizen ID
-    citizenId: Joi.string().alphanum().min(6).max(20),
-    
-    // Location coordinates
-    coordinates: Joi.object({
-      latitude: Joi.number().min(-90).max(90).required(),
-      longitude: Joi.number().min(-180).max(180).required()
-    }),
-    
-    // File upload
-    file: Joi.object({
-      filename: Joi.string().required(),
-      mimetype: Joi.string().valid('image/jpeg', 'image/png', 'application/pdf').required(),
-      size: Joi.number().max(10 * 1024 * 1024) // 10MB
-    }),
-    
-    // Pagination
-    pagination: Joi.object({
-      page: Joi.number().integer().min(1).default(1),
-      limit: Joi.number().integer().min(1).max(100).default(10),
-      sortBy: Joi.string(),
-      sortOrder: Joi.string().valid('asc', 'desc').default('desc')
-    })
-  };
+  constructor() {
+    // Common validation schemas
+    this.schemas = {
+      // MongoDB ObjectId
+      objectId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message('Invalid ObjectId'),
+      
+      // Email
+      email: Joi.string().email().lowercase().trim(),
+      
+      // Password
+      password: Joi.string().min(8).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+        .message('Password must contain at least 8 characters with uppercase, lowercase, number and special character'),
+      
+      // Mobile number (Indian format)
+      mobileNumber: Joi.string().pattern(/^[6-9]\d{9}$/).message('Invalid mobile number'),
+      
+      // Citizen ID
+      citizenId: Joi.string().alphanum().min(6).max(20),
+      
+      // Location coordinates
+      coordinates: Joi.object({
+        latitude: Joi.number().min(-90).max(90).required(),
+        longitude: Joi.number().min(-180).max(180).required()
+      }),
+      
+      // File upload
+      file: Joi.object({
+        filename: Joi.string().required(),
+        mimetype: Joi.string().valid('image/jpeg', 'image/png', 'application/pdf').required(),
+        size: Joi.number().max(10 * 1024 * 1024) // 10MB
+      }),
+      
+      // Pagination
+      pagination: Joi.object({
+        page: Joi.number().integer().min(1).default(1),
+        limit: Joi.number().integer().min(1).max(100).default(10),
+        sortBy: Joi.string(),
+        sortOrder: Joi.string().valid('asc', 'desc').default('desc')
+      })
+    };
 
-  // User registration validation
-  userRegistration = Joi.object({
-    name: Joi.string().trim().min(2).max(100).required(),
-    email: this.schemas.email.required(),
-    password: this.schemas.password.required(),
-    confirmPassword: Joi.string().valid(Joi.ref('password')).required()
-      .messages({ 'any.only': 'Password confirmation does not match' }),
-    mobileNumber: this.schemas.mobileNumber.required(),
-    citizenId: this.schemas.citizenId.required(),
-    ward: Joi.string().trim().min(1).max(50).required(),
-    address: Joi.object({
-      street: Joi.string().trim().max(200),
-      area: Joi.string().trim().max(100),
-      pincode: Joi.string().pattern(/^\d{6}$/).message('Invalid pincode')
-    }),
-    role: Joi.string().valid('citizen', 'officer', 'admin').default('citizen')
-  });
+    // User registration validation
+    this.userRegistration = Joi.object({
+      name: Joi.string().trim().min(2).max(100).required(),
+      email: this.schemas.email.required(),
+      password: this.schemas.password.required(),
+      confirmPassword: Joi.string().valid(Joi.ref('password')).required()
+        .messages({ 'any.only': 'Password confirmation does not match' }),
+      mobileNumber: this.schemas.mobileNumber.required(),
+      citizenId: this.schemas.citizenId.required(),
+      ward: Joi.string().trim().min(1).max(50).required(),
+      address: Joi.object({
+        street: Joi.string().trim().max(200),
+        area: Joi.string().trim().max(100),
+        pincode: Joi.string().pattern(/^\d{6}$/).message('Invalid pincode')
+      }),
+      role: Joi.string().valid('citizen', 'officer', 'admin').default('citizen')
+    });
 
-  // User login validation
-  userLogin = Joi.object({
-    email: this.schemas.email,
-    mobileNumber: this.schemas.mobileNumber,
-    password: Joi.string().required(),
-    rememberMe: Joi.boolean().default(false)
-  }).xor('email', 'mobileNumber'); // Either email or mobile number required
+    // User login validation
+    this.userLogin = Joi.object({
+      email: this.schemas.email,
+      mobileNumber: this.schemas.mobileNumber,
+      password: Joi.string().required(),
+      rememberMe: Joi.boolean().default(false)
+    }).xor('email', 'mobileNumber'); // Either email or mobile number required
 
-  // Grievance creation validation
-  grievanceCreation = Joi.object({
-    title: Joi.string().trim().min(5).max(200).required(),
-    description: Joi.string().trim().min(10).max(2000).required(),
-    category: Joi.string().valid('roads', 'water', 'sanitation', 'electricity', 'waste', 'other').required(),
-    priority: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
-    location: Joi.object({
-      latitude: Joi.number().min(-90).max(90).required(),
-      longitude: Joi.number().min(-180).max(180).required(),
-      address: Joi.string().trim().max(300).required()
-    }),
-    ward: Joi.string().trim().required()
-  });
+    // Grievance creation validation
+    this.grievanceCreation = Joi.object({
+      title: Joi.string().trim().min(5).max(200).required(),
+      description: Joi.string().trim().min(10).max(2000).required(),
+      category: Joi.string().valid('roads', 'water', 'sanitation', 'electricity', 'waste', 'other').required(),
+      priority: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
+      location: Joi.object({
+        latitude: Joi.number().min(-90).max(90).required(),
+        longitude: Joi.number().min(-180).max(180).required(),
+        address: Joi.string().trim().max(300).required()
+      }),
+      ward: Joi.string().trim().required()
+    });
 
-  // Status update validation
-  statusUpdate = Joi.object({
-    status: Joi.string().valid('submitted', 'acknowledged', 'in_progress', 'resolved', 'closed').required(),
-    comment: Joi.string().trim().max(1000),
-    estimatedResolutionDate: Joi.date().iso().greater('now')
-  });
+    // Status update validation
+    this.statusUpdate = Joi.object({
+      status: Joi.string().valid('submitted', 'acknowledged', 'in_progress', 'resolved', 'closed').required(),
+      comment: Joi.string().trim().max(1000),
+      estimatedResolutionDate: Joi.date().iso().greater('now')
+    });
+  }
 
   // Create validation middleware
   validate = (schema, source = 'body') => {
