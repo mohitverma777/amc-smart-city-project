@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile.prod
+    ports:
+      - "80:3000"
+      - "443:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # User Management Service
+  user-management:
+    build:
+      context: ./user-management
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Grievance Service
+  grievance-service:
+    build:
+      context: ./grievance-service
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Property Tax Service
+  property-tax-service:
+    build:
+      context: ./property-tax-service
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile.prod
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Databases
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: amc_smart_city
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3010:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    driver: bridge

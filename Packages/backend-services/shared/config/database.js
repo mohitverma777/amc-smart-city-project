@@ -1,3 +1,4 @@
+// Packages/backend-services/shared/config/database.js
 const { Pool } = require('pg');
 const mongoose = require('mongoose');
 const redis = require('redis');

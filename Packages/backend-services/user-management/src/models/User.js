@@ -1,15 +1,9 @@
+// Packages/backend-services/user-management/src/models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   // Basic Information
-  citizenId: {
-    type: String,
-    required: [true, 'Citizen ID is required'],
-    unique: true,
-    trim: true
-  },
-  
   name: {
     type: String,
     required: [true, 'Name is required'],
@@ -55,6 +49,57 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   
+  // Citizens have citizenId, Officers/Admins have employeeId
+  citizenId: {
+    type: String,
+    trim: true,
+    sparse: true, // Allow null/undefined
+    unique: true,
+    validate: {
+      validator: function(value) {
+        // citizenId required only for citizens
+        if (this.role === 'citizen') {
+          return value && value.length >= 6;
+        }
+        return true; // Not required for admin/officer
+      },
+      message: 'Citizen ID must be at least 6 characters long'
+    }
+  },
+  
+  employeeId: {
+    type: String,
+    trim: true,
+    sparse: true, // Allow null/undefined
+    unique: true,
+    validate: {
+      validator: function(value) {
+        // employeeId required only for officers/admins
+        if (this.role === 'officer' || this.role === 'admin') {
+          return value && value.length >= 3;
+        }
+        return true; // Not required for citizens
+      },
+      message: 'Employee ID must be at least 3 characters long'
+    }
+  },
+  
+  // Admin/Officer specific fields
+  department: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(value) {
+        // department required only for officers/admins
+        if (this.role === 'officer' || this.role === 'admin') {
+          return value && value.length > 0;
+        }
+        return true; // Not required for citizens
+      },
+      message: 'Department is required for officers and admins'
+    }
+  },
+  
   address: {
     street: String,
     area: String,
@@ -74,6 +119,19 @@ const userSchema = new mongoose.Schema({
     enum: ['male', 'female', 'other']
   },
   
+  // Audit fields for admin-created users
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  
+  createdByRole: {
+    type: String,
+    enum: ['self', 'admin', 'system'],
+    default: 'self'
+  },
+  
   // Security Fields
   lastLogin: Date
 }, {
@@ -91,7 +149,30 @@ const userSchema = new mongoose.Schema({
 // Indexes
 userSchema.index({ email: 1 });
 userSchema.index({ mobileNumber: 1 });
-userSchema.index({ citizenId: 1 });
+userSchema.index({ citizenId: 1 }, { sparse: true });
+userSchema.index({ employeeId: 1 }, { sparse: true });
+userSchema.index({ role: 1 });
+userSchema.index({ createdBy: 1 });
+
+// Pre-save validation for role-specific required fields
+userSchema.pre('validate', function(next) {
+  // Ensure citizens have citizenId
+  if (this.role === 'citizen' && !this.citizenId) {
+    this.invalidate('citizenId', 'Citizen ID is required for citizens');
+  }
+  
+  // Ensure officers/admins have employeeId and department
+  if ((this.role === 'officer' || this.role === 'admin')) {
+    if (!this.employeeId) {
+      this.invalidate('employeeId', 'Employee ID is required for officers and admins');
+    }
+    if (!this.department) {
+      this.invalidate('department', 'Department is required for officers and admins');
+    }
+  }
+  
+  next();
+});
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
@@ -105,5 +186,24 @@ userSchema.pre('save', async function(next) {
     next(error);
   }
 });
+
+// Static method to find by credentials
+userSchema.statics.findByCredentials = async function(identifier, password) {
+  const user = await this.findOne({
+    $or: [
+      { email: identifier.toLowerCase() },
+      { mobileNumber: identifier },
+      { employeeId: identifier },
+      { citizenId: identifier }
+    ],
+    isActive: true
+  }).select('+password');
+  
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    throw new Error('Invalid login credentials');
+  }
+  
+  return user;
+};
 
 module.exports = mongoose.model('User', userSchema);

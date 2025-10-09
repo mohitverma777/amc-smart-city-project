@@ -1,3 +1,4 @@
+// Packages/backend-services/user-management/src/app.js
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -6,6 +7,8 @@ require('dotenv').config();
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin'); // Add this line
 
 const app = express();
 
@@ -38,6 +41,8 @@ connectDB();
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
+app.use('/admin', adminRoutes); // Add this line
 
 // Health check
 app.get('/health', (req, res) => {

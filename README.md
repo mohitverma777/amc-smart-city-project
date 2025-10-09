@@ -2,7 +2,7 @@
 |
 |-- 📂 packages/
 |   |
-|   |-- 🚀 iccs-dashboard/         (React Web App for Officials)
+|   |-- 🚀 amc-dashboard/         (React Web App for admins)
 |   |
 |   |-- 📱 amc-super-app/          (Flutter Mobile App for Citizens)
 |   |

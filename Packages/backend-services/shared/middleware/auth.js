@@ -1,6 +1,5 @@
+// Packages/backend-services/shared/middleware/auth.js
 const jwt = require('jsonwebtoken');
-const { promisify } = require('util');
-const config = require('../config/environment');
 const logger = require('../utils/logger');
 
 class AuthMiddleware {
@@ -27,7 +26,8 @@ class AuthMiddleware {
   // Verify JWT token
   async verifyToken(token) {
     try {
-      const decoded = await promisify(jwt.verify)(token, config.JWT.secret);
+      const secret = process.env.JWT_SECRET || 'amc-super-secret-jwt-key-change-in-production';
+      const decoded = jwt.verify(token, secret);
       return decoded;
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
@@ -43,15 +43,22 @@ class AuthMiddleware {
   // Main authentication middleware
   authenticate = async (req, res, next) => {
     try {
+      console.log(`🔍 Auth check for: ${req.method} ${req.path}`);
+      
       // Public routes that don't need authentication
       const publicPaths = [
         '/auth/register',
         '/auth/login',
-        '/health'
+        '/auth/refresh-token',
+        '/health',
+        '/info'
       ];
 
-      // ✅ Allow public routes without token
-      if (publicPaths.includes(req.path)) {
+      // Check if current path is public
+      const isPublicPath = publicPaths.some(path => req.path.startsWith(path));
+      
+      if (isPublicPath) {
+        console.log('✅ Public route, skipping auth');
         return next();
       }
 
@@ -59,6 +66,7 @@ class AuthMiddleware {
       const token = this.extractToken(req);
 
       if (!token) {
+        console.log('❌ No token provided');
         return res.status(401).json({
           status: 'error',
           message: 'Access denied. No token provided.',
@@ -68,6 +76,7 @@ class AuthMiddleware {
 
       // Verify token
       const decoded = await this.verifyToken(token);
+      console.log('✅ Token verified for user:', decoded.email);
 
       // Add user info to request
       req.user = {
@@ -75,16 +84,16 @@ class AuthMiddleware {
         email: decoded.email,
         role: decoded.role,
         citizenId: decoded.citizenId,
+        employeeId: decoded.employeeId,
+        ward: decoded.ward,
+        department: decoded.department,
         iat: decoded.iat,
         exp: decoded.exp
       };
 
-      // Log authentication
-      logger.info(`User authenticated: ${decoded.email} (${decoded.role})`);
-
       next();
     } catch (error) {
-      logger.warn(`Authentication failed: ${error.message}`);
+      console.log('❌ Authentication failed:', error.message);
       
       return res.status(401).json({
         status: 'error',
@@ -97,7 +106,10 @@ class AuthMiddleware {
   // Authorization middleware for roles
   authorize = (...allowedRoles) => {
     return (req, res, next) => {
+      console.log(`🔐 Authorization check for roles: ${allowedRoles.join(', ')}`);
+      
       if (!req.user) {
+        console.log('❌ No user in request');
         return res.status(401).json({
           status: 'error',
           message: 'Authentication required',
@@ -106,7 +118,7 @@ class AuthMiddleware {
       }
 
       if (!allowedRoles.includes(req.user.role)) {
-        logger.warn(`Authorization failed: User ${req.user.email} (${req.user.role}) attempted to access resource requiring roles: ${allowedRoles.join(', ')}`);
+        console.log(`❌ User role '${req.user.role}' not in allowed roles: ${allowedRoles.join(', ')}`);
         
         return res.status(403).json({
           status: 'error',
@@ -117,56 +129,7 @@ class AuthMiddleware {
         });
       }
 
-      next();
-    };
-  };
-
-  // Optional authentication (doesn't fail if no token)
-  optionalAuth = async (req, res, next) => {
-    try {
-      const token = this.extractToken(req);
-      
-      if (token) {
-        const decoded = await this.verifyToken(token);
-        req.user = {
-          id: decoded.id,
-          email: decoded.email,
-          role: decoded.role,
-          citizenId: decoded.citizenId
-        };
-      }
-    } catch (error) {
-      // Silently ignore authentication errors for optional auth
-      logger.debug(`Optional authentication failed: ${error.message}`);
-    }
-    
-    next();
-  };
-
-  // Check if user owns resource
-  checkOwnership = (resourceUserIdField = 'userId') => {
-    return (req, res, next) => {
-      if (!req.user) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Authentication required'
-        });
-      }
-
-      const resourceUserId = req.params[resourceUserIdField] || req.body[resourceUserIdField];
-      
-      if (req.user.role === 'admin') {
-        // Admins can access any resource
-        return next();
-      }
-
-      if (req.user.id !== resourceUserId && req.user.citizenId !== resourceUserId) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Access denied. You can only access your own resources.'
-        });
-      }
-
+      console.log('✅ Authorization passed for user:', req.user.email);
       next();
     };
   };

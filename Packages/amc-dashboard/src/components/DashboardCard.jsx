@@ -1,3 +1,4 @@
+// Packages/amc-dashboard/src/components/DashboardCard.jsx
 import React from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 

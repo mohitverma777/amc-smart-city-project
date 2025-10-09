@@ -1,4 +1,3 @@
-# Create detailed folder structure for the backend services
 # folder_structure
 /amc-smart-city-project/packages/backend-services/
 │
@@ -81,28 +80,6 @@
 │   ├── package.json
 │   └── .env.example
 │
-├── 🏠 property-tax-service/             # Property Tax Service
-│   ├── 📁 src/
-│   │   ├── 📁 controllers/
-│   │   │   ├── propertyController.js    # Property management
-│   │   │   ├── taxController.js         # Tax calculations
-│   │   │   └── paymentController.js     # Payment handling
-│   │   ├── 📁 models/                   # PostgreSQL models
-│   │   │   ├── Property.js              # Property details
-│   │   │   ├── TaxAssessment.js         # Tax calculations
-│   │   │   └── Payment.js               # Payment records
-│   │   ├── 📁 routes/
-│   │   │   ├── properties.js            # Property routes
-│   │   │   ├── taxes.js                 # Tax routes
-│   │   │   └── payments.js              # Payment routes
-│   │   ├── 📁 services/
-│   │   │   ├── propertyService.js       # Property operations
-│   │   │   ├── taxCalculationService.js # Tax calculation engine
-│   │   │   └── receiptService.js        # Receipt generation
-│   │   └── app.js
-│   ├── Dockerfile
-│   ├── package.json
-│   └── .env.example
 │
 ├── 💧 water-management/                 # Water Management Service
 │   ├── 📁 src/

@@ -8,9 +8,9 @@ class InputField extends StatelessWidget {
   final IconData? prefixIcon;
   final Widget? suffixIcon;
   final bool obscureText;
-  final TextInputType? keyboardType;
+  final TextInputType keyboardType;
   final String? Function(String?)? validator;
-  final int maxLines;
+  final void Function(String)? onChanged;
   final bool enabled;
 
   const InputField({
@@ -21,60 +21,55 @@ class InputField extends StatelessWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.obscureText = false,
-    this.keyboardType,
+    this.keyboardType = TextInputType.text,
     this.validator,
-    this.maxLines = 1,
+    this.onChanged,
     this.enabled = true,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      validator: validator,
+      onChanged: onChanged,
+      enabled: enabled,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText ?? label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(color: Colors.white54),
+        prefixIcon: prefixIcon != null
+            ? Icon(prefixIcon, color: Colors.white70, size: 20)
+            : null,
+        suffixIcon: suffixIcon,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          validator: validator,
-          maxLines: maxLines,
-          enabled: enabled,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: hintText ?? label,
-            hintStyle: const TextStyle(color: Colors.white54),
-            prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: Colors.white70)
-                : null,
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.1),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.red.shade400),
-            ),
-          ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.white, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1),
+        errorStyle: const TextStyle(color: Colors.red),
+      ),
     );
   }
 }

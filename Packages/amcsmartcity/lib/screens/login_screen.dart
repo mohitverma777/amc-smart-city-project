@@ -1,5 +1,7 @@
 // lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/colors.dart';
 import '../utils/routes.dart';
 import '../widgets/input_field.dart';
@@ -14,29 +16,52 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _login() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isLoading = true);
+      print('🔄 Login Screen: Form validation passed');
 
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      print('🔄 Login Screen: Calling authProvider.login');
+      final success = await authProvider.login(
+        identifier: _identifierController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      print('📨 Login Screen: Login result - $success');
+
+      if (!mounted) return;
+
+      if (success) {
+        print('✅ Login Screen: Login successful, navigating to home');
+        AppRoutes.navigateToHome(context);
+      } else {
+        print('❌ Login Screen: Login failed - ${authProvider.errorMessage}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage ?? 'Login failed'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
       }
+    } else {
+      print('❌ Login Screen: Form validation failed');
     }
   }
 
@@ -76,35 +101,79 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                Text(
+                const Text(
                   'Welcome Back',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineLarge,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Sign in to access your municipal services',
                   textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
                 ),
                 const SizedBox(height: 60),
+
+                // Show error message if any
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    if (authProvider.errorMessage != null) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: AppColors.error.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: AppColors.error,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                authProvider.errorMessage!,
+                                style: TextStyle(
+                                  color: AppColors.error,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              color: AppColors.error,
+                              onPressed: () => authProvider.clearError(),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
                 InputField(
-                  controller: _emailController,
-                  label: 'Email Address',
+                  controller: _identifierController,
+                  label: 'Email / Mobile / Citizen ID',
                   keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.email,
+                  prefixIcon: Icons.person,
                   validator: (value) {
-                    // if (value?.isEmpty ?? true) {
-                    //   return 'Please enter your email';
-                    // }
-                    // if (!RegExp(
-                    //   r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                    // ).hasMatch(value!)) {
-                    //   return 'Please enter a valid email';
-                    // }
-                    // return null;
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your email, mobile number, or citizen ID';
+                    }
+                    return null;
                   },
                 ),
                 const SizedBox(height: 20),
@@ -125,13 +194,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   validator: (value) {
-                    // if (value?.isEmpty ?? true) {
-                    //   return 'Please enter your password';
-                    // }
-                    // if (value!.length < 6) {
-                    //   return 'Password must be at least 6 characters';
-                    // }
-                    // return null;
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your password';
+                    }
+                    return null;
                   },
                 ),
                 const SizedBox(height: 12),
@@ -140,6 +206,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: TextButton(
                     onPressed: () {
                       // Handle forgot password
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Forgot password feature coming soon!'),
+                        ),
+                      );
                     },
                     child: const Text(
                       'Forgot Password?',
@@ -148,20 +219,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                CustomButton(
-                  text: 'Sign In',
-                  onPressed: _login,
-                  isLoading: _isLoading,
+
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    return CustomButton(
+                      text: 'Sign In',
+                      onPressed: authProvider.isLoading
+                          ? null
+                          : () async => await _login(),
+                      isLoading: authProvider.isLoading,
+                    );
+                  },
                 ),
+
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       "Don't have an account? ",
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                      ),
                     ),
                     TextButton(
                       onPressed: () =>

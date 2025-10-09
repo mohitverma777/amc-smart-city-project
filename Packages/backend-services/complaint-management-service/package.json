@@ -1,0 +1,25 @@
+{
+  "name": "complaint-management-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "node test-service.js",
+    "test-db": "node src/test-db.js",
+    "setup": "npm install && node src/test-db.js",
+    "logs": "tail -f logs/combined.log",
+    "clean": "rm -rf node_modules logs/* uploads/complaints/*"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "form-data": "^4.0.4",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.0",
+    "multer": "^2.0.2"
+  }
+}

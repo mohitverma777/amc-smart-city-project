@@ -1,15 +1,14 @@
-// lib/utils/routes.dart
+// lib/routes/app_routes.dart
 import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/home_screen.dart';
-import '../screens/services_screen.dart';
-import '../screens/service_detail_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/services_screen.dart';
 import '../screens/notifications_screen.dart';
-import '../screens/payment_screen.dart';
+import '../screens/payment_screen.dart'; // ✅ Payment screen
 import '../screens/complaint_screen.dart';
 import '../screens/track_complaint_screen.dart';
 import '../screens/documents_screen.dart';
@@ -39,97 +38,105 @@ class AppRoutes {
     switch (settings.name) {
       case AppRoutes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
+
       case AppRoutes.onboarding:
         return MaterialPageRoute(builder: (_) => const OnboardingScreen());
+
       case AppRoutes.login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
+
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
+
       case AppRoutes.home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
+
       case AppRoutes.services:
-        return MaterialPageRoute(builder: (_) => const ServicesScreen());
-      case AppRoutes.serviceDetail:
-        final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => ServiceDetailScreen(
-            serviceName: args?['serviceName'] ?? 'Service',
-            serviceIcon: args?['serviceIcon'] ?? Icons.room_service,
-          ),
+          builder: (_) => const ServicesScreen(), // ✅ Use actual screen
         );
+
       case AppRoutes.profile:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+        return MaterialPageRoute(
+          builder: (_) => const ProfileScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.notifications:
-        return MaterialPageRoute(builder: (_) => const NotificationsScreen());
+        return MaterialPageRoute(
+          builder: (_) => const NotificationsScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.payment:
-        return MaterialPageRoute(builder: (_) => const PaymentScreen());
+        return MaterialPageRoute(
+          builder: (_) =>
+              const PaymentScreen(), // ✅ UPDATED: Use actual payment screen
+        );
+
       case AppRoutes.complaint:
-        return MaterialPageRoute(builder: (_) => const ComplaintScreen());
+        return MaterialPageRoute(
+          builder: (_) => const ComplaintScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.trackComplaint:
-        return MaterialPageRoute(builder: (_) => const TrackComplaintScreen());
+        return MaterialPageRoute(
+          builder: (_) => const TrackComplaintScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.documents:
-        return MaterialPageRoute(builder: (_) => const DocumentsScreen());
+        return MaterialPageRoute(
+          builder: (_) => const DocumentsScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.settings:
-        return MaterialPageRoute(builder: (_) => const SettingsScreen());
+        return MaterialPageRoute(
+          builder: (_) => const SettingsScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.help:
-        return MaterialPageRoute(builder: (_) => const HelpScreen());
+        return MaterialPageRoute(
+          builder: (_) => const HelpScreen(), // ✅ Use actual screen
+        );
+
       case AppRoutes.about:
-        return MaterialPageRoute(builder: (_) => const AboutScreen());
+        return MaterialPageRoute(
+          builder: (_) => const AboutScreen(), // ✅ Use actual screen
+        );
+
       default:
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('No route defined for ${settings.name}')),
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Error'),
+              backgroundColor: const Color(0xFF002B5B),
+            ),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Route not found: ${settings.name}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      splash,
+                      (route) => false,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF002B5B),
+                    ),
+                    child: const Text('Go Home'),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
     }
-  }
-
-  // Alternative approach using a map-based routing (more modern)
-  static final Map<String, Widget Function(BuildContext)> _routes = {
-    splash: (context) => const SplashScreen(),
-    onboarding: (context) => const OnboardingScreen(),
-    login: (context) => const LoginScreen(),
-    register: (context) => const RegisterScreen(),
-    home: (context) => const HomeScreen(),
-    services: (context) => const ServicesScreen(),
-    profile: (context) => const ProfileScreen(),
-    notifications: (context) => const NotificationsScreen(),
-    payment: (context) => const PaymentScreen(),
-    complaint: (context) => const ComplaintScreen(),
-    trackComplaint: (context) => const TrackComplaintScreen(),
-    documents: (context) => const DocumentsScreen(),
-    settings: (context) => const SettingsScreen(),
-    help: (context) => const HelpScreen(),
-    about: (context) => const AboutScreen(),
-  };
-
-  // Alternative generateRoute method using map
-  static Route<dynamic> generateRouteWithMap(RouteSettings settings) {
-    final routeName = settings.name;
-
-    // Handle special cases that need arguments
-    if (routeName == serviceDetail) {
-      final args = settings.arguments as Map<String, dynamic>?;
-      return MaterialPageRoute(
-        builder: (_) => ServiceDetailScreen(
-          serviceName: args?['serviceName'] ?? 'Service',
-          serviceIcon: args?['serviceIcon'] ?? Icons.room_service,
-        ),
-      );
-    }
-
-    // Handle regular routes
-    final builder = _routes[routeName];
-    if (builder != null) {
-      return MaterialPageRoute(builder: builder);
-    }
-
-    // Default route for undefined routes
-    return MaterialPageRoute(
-      builder: (_) => Scaffold(
-        body: Center(child: Text('No route defined for $routeName')),
-      ),
-    );
   }
 
   // Navigation helper methods
@@ -141,16 +148,16 @@ class AppRoutes {
     Navigator.pushNamedAndRemoveUntil(context, login, (route) => false);
   }
 
-  static void navigateToServiceDetail(
-    BuildContext context, {
-    required String serviceName,
-    required IconData serviceIcon,
-  }) {
-    Navigator.pushNamed(
-      context,
-      serviceDetail,
-      arguments: {'serviceName': serviceName, 'serviceIcon': serviceIcon},
-    );
+  static void navigateToPayment(BuildContext context) {
+    Navigator.pushNamed(context, payment);
+  }
+
+  static void navigateToComplaint(BuildContext context) {
+    Navigator.pushNamed(context, complaint);
+  }
+
+  static void navigateToTrackComplaint(BuildContext context) {
+    Navigator.pushNamed(context, trackComplaint);
   }
 
   static void navigateBack(BuildContext context) {
@@ -167,84 +174,3 @@ class AppRoutes {
     Navigator.pushNamedAndRemoveUntil(context, routeName, (route) => false);
   }
 }
-
-// Route configuration for GoRouter (alternative modern approach)
-/*
-import 'package:go_router/go_router.dart';
-
-final GoRouter appRouter = GoRouter(
-  initialLocation: AppRoutes.splash,
-  routes: [
-    GoRoute(
-      path: AppRoutes.splash,
-      builder: (context, state) => const SplashScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.onboarding,
-      builder: (context, state) => const OnboardingScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.login,
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.register,
-      builder: (context, state) => const RegisterScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.home,
-      builder: (context, state) => const HomeScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.services,
-      builder: (context, state) => const ServicesScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.serviceDetail,
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        return ServiceDetailScreen(
-          serviceName: extra?['serviceName'] ?? 'Service',
-          serviceIcon: extra?['serviceIcon'] ?? Icons.room_service,
-        );
-      },
-    ),
-    GoRoute(
-      path: AppRoutes.profile,
-      builder: (context, state) => const ProfileScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.notifications,
-      builder: (context, state) => const NotificationsScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.payment,
-      builder: (context, state) => const PaymentScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.complaint,
-      builder: (context, state) => const ComplaintScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.trackComplaint,
-      builder: (context, state) => const TrackComplaintScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.documents,
-      builder: (context, state) => const DocumentsScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.settings,
-      builder: (context, state) => const SettingsScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.help,
-      builder: (context, state) => const HelpScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.about,
-      builder: (context, state) => const AboutScreen(),
-    ),
-  ],
-);
-*/

@@ -1,8 +1,16 @@
 // lib/screens/complaint_screen.dart
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../utils/colors.dart';
 import '../widgets/input_field.dart';
 import '../widgets/custom_button.dart';
+import '../services/complaint_service.dart';
+import '../utils/auth_token.dart';
 
 class ComplaintScreen extends StatefulWidget {
   const ComplaintScreen({Key? key}) : super(key: key);
@@ -16,10 +24,14 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
-  
+
   String _selectedCategory = 'Water Supply';
   String _selectedPriority = 'Medium';
   bool _isSubmitting = false;
+
+  final _picker = ImagePicker();
+  List<XFile> _imageFiles = [];
+  List<Uint8List> _imageBytes = [];
 
   final List<String> _categories = [
     'Water Supply',
@@ -42,13 +54,194 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImages() async {
+    try {
+      final picked = await _picker.pickMultiImage(imageQuality: 70);
+      if (picked != null && mounted) {
+        final bytesList = <Uint8List>[];
+        for (var file in picked) {
+          final bytes = await file.readAsBytes();
+          bytesList.add(bytes);
+        }
+        setState(() {
+          _imageFiles = picked;
+          _imageBytes = bytesList;
+        });
+      }
+    } catch (e) {
+      _showError('Error picking images: $e');
+    }
+  }
+
+  Future<void> _submitComplaint() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Check for empty required fields manually
+    if (_titleController.text.trim().isEmpty) {
+      _showError('Please enter complaint title');
+      return;
+    }
+    if (_descriptionController.text.trim().isEmpty) {
+      _showError('Please enter complaint description');
+      return;
+    }
+    if (_locationController.text.trim().isEmpty) {
+      _showError('Please enter location');
+      return;
+    }
+
+    final token = await AuthToken.get();
+    if (token == null || token.isEmpty) {
+      _showError('You must be logged in to file a complaint.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final service = ComplaintService();
+
+    try {
+      // Pass XFile list directly - service will handle platform detection
+      final response = await service.fileComplaint(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        address: _locationController.text.trim(),
+        category: _selectedCategory,
+        priority: _selectedPriority,
+        token: token,
+        imageFiles: _imageFiles, // Pass XFile list, not File list
+      );
+
+      setState(() => _isSubmitting = false);
+
+      if (response['success'] == true) {
+        final complaintData = response['data']?['data']?['complaint'];
+        final complaintId =
+            complaintData?['complaintNumber'] ??
+            'CMP${DateTime.now().millisecondsSinceEpoch}';
+
+        _clearForm();
+        _showSuccessDialog(complaintId);
+      } else {
+        final errorMessage =
+            response['data']?['message'] ??
+            response['error'] ??
+            'Unknown error occurred';
+        _showError('Failed to submit: $errorMessage');
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      _showError('Network error: $e');
+    }
+  }
+
+  void _clearForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _locationController.clear();
+    setState(() {
+      _imageFiles = [];
+      _imageBytes = [];
+      _selectedPriority = 'Medium';
+      _selectedCategory = 'Water Supply';
+    });
+  }
+
+  void _showSuccessDialog(String complaintId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: AppColors.success, size: 64),
+            const SizedBox(height: 16),
+            const Text(
+              'Complaint Filed Successfully!',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Complaint ID: $complaintId',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You can track your complaint status using this ID',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.white54),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white30),
+                    foregroundColor: Colors.white70,
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Tracking feature coming soon!'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  },
+                  child: const Text('Track Status'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(String msg) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Error', style: TextStyle(color: Colors.white)),
+        content: Text(msg, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('File Complaint'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('File Complaint'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -98,9 +291,8 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Report issues and we\'ll resolve them quickly',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white70,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.white70),
                           ),
                         ],
                       ),
@@ -110,13 +302,10 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
               ),
 
               const SizedBox(height: 24),
-
-              // Form Fields
               Text(
                 'Complaint Details',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              
               const SizedBox(height: 16),
 
               // Category Dropdown
@@ -124,77 +313,60 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                 'Category',
                 _selectedCategory,
                 _categories,
-                (value) => setState(() => _selectedCategory = value!),
+                (v) => setState(() => _selectedCategory = v!),
                 Icons.category,
               ),
-
               const SizedBox(height: 20),
 
-              // Title Field
+              // Title
               InputField(
                 controller: _titleController,
                 label: 'Complaint Title',
                 prefixIcon: Icons.title,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter complaint title';
-                  }
-                  return null;
-                },
+                validator: (v) => (v?.isEmpty ?? true)
+                    ? 'Please enter complaint title'
+                    : null,
               ),
-
               const SizedBox(height: 20),
 
-              // Description Field
+              // Description
               InputField(
                 controller: _descriptionController,
                 label: 'Description',
                 prefixIcon: Icons.description,
-                maxLines: 4,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter complaint description';
-                  }
-                  return null;
-                },
+                // maxLines: 3,
+                validator: (v) => (v?.isEmpty ?? true)
+                    ? 'Please enter complaint description'
+                    : null,
               ),
-
               const SizedBox(height: 20),
 
-              // Location Field
+              // Location
               InputField(
                 controller: _locationController,
                 label: 'Location/Address',
                 prefixIcon: Icons.location_on,
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.my_location, color: Colors.white70),
-                  onPressed: () {
-                    // Get current location
-                    _locationController.text = 'Current Location';
-                  },
+                  onPressed: () => _locationController.text =
+                      'Current Location - Ahmedabad, Gujarat',
                 ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter location';
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                    (v?.isEmpty ?? true) ? 'Please enter location' : null,
               ),
-
               const SizedBox(height: 20),
 
-              // Priority Dropdown
+              // Priority
               _buildDropdownField(
                 'Priority',
                 _selectedPriority,
                 _priorities,
-                (value) => setState(() => _selectedPriority = value!),
+                (v) => setState(() => _selectedPriority = v!),
                 Icons.flag,
               ),
-
               const SizedBox(height: 20),
 
-              // Attachments Section
+              // Attachments
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -212,42 +384,62 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Add Photos (Optional)',
+                      'Add Photos (${_imageFiles.length} selected)',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Upload photos to help us understand the issue better',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white54,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.white54),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: () {
-                        // Handle photo upload
-                      },
+                      onPressed: _pickImages,
                       icon: const Icon(Icons.add_photo_alternate),
-                      label: const Text('Add Photos'),
+                      label: Text(
+                        _imageFiles.isEmpty
+                            ? 'Add Photos'
+                            : 'Change Photos (${_imageFiles.length})',
+                      ),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.white30),
                         foregroundColor: Colors.white70,
                       ),
                     ),
+                    if (_imageBytes.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _imageBytes
+                            .map(
+                              (bytes) => ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(
+                                  bytes,
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
-
               const SizedBox(height: 32),
 
-              // Submit Button
+              // Submit
               CustomButton(
                 text: 'Submit Complaint',
-                onPressed: _submitComplaint,
+                onPressed: _isSubmitting ? null : _submitComplaint,
                 isLoading: _isSubmitting,
               ),
-
               const SizedBox(height: 16),
 
               // Info Text
@@ -265,9 +457,9 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     Expanded(
                       child: Text(
                         'You will receive a complaint ID to track the status',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.info,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: AppColors.info),
                       ),
                     ),
                   ],
@@ -292,9 +484,9 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         Container(
@@ -313,99 +505,12 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
             ),
             dropdownColor: AppColors.surface,
             style: const TextStyle(color: Colors.white),
-            items: items.map((item) {
-              return DropdownMenuItem(
-                value: item,
-                child: Text(item),
-              );
-            }).toList(),
+            items: items
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
           ),
         ),
       ],
     );
-  }
-
-  Future<void> _submitComplaint() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isSubmitting = true);
-
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        
-        final complaintId = 'CMP${DateTime.now().millisecondsSinceEpoch}';
-        
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: AppColors.success,
-                  size: 64,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Complaint Filed Successfully!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Complaint ID: $complaintId',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'You can track your complaint status using this ID',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white54,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white30),
-                        foregroundColor: Colors.white70,
-                      ),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // Navigate to track complaint screen
-                      },
-                      child: const Text('Track Status'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      }
-    }
   }
 }

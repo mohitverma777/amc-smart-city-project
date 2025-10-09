@@ -1,0 +1,25 @@
+{
+  "name": "gemini-chatbot-backend",
+  "version": "1.0.0",
+  "description": "AI Chatbot backend using Google Gemini API with database integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["chatbot", "gemini", "ai", "nodejs", "express"],
+  "dependencies": {
+    "@google/generative-ai": "^0.17.1",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.4.0",
+    "joi": "^17.13.3",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
