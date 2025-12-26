@@ -33,7 +33,7 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
 // TomTom API Key
-const TOMTOM_API_KEY = "W6KTBIcKX9aY8FUUE6k3iGZ41VR4Eqz6";
+const TOMTOM_API_KEY = "your api key";
 
 // Enhanced OpenStreetMap Road Data Fetcher with Zoom-based Filtering
 class RoadGeometryFetcher {
